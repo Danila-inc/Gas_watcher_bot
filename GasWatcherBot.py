@@ -1,6 +1,7 @@
 import os
 import requests
-from telegram import Update
+import asyncio
+from telegram import Update, Bot
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, ContextTypes, JobQueue, Job
 )
@@ -94,6 +95,13 @@ async def get_gas_price():
         return None
 
 if __name__ == "__main__":
+    async def unset_webhook():
+        bot = Bot(token=TOKEN)
+        await bot.delete_webhook(drop_pending_updates=True)
+        print("🔧 Вебхук удалён (если был)")
+
+    asyncio.run(unset_webhook())
+
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("gas", gas))
