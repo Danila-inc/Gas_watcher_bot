@@ -95,17 +95,17 @@ async def get_gas_price():
         return None
 
 if __name__ == "__main__":
-    async def unset_webhook():
+    async def main():
         bot = Bot(token=TOKEN)
         await bot.delete_webhook(drop_pending_updates=True)
         print("🔧 Вебхук удалён (если был)")
 
-    asyncio.run(unset_webhook())
+        app = ApplicationBuilder().token(TOKEN).build()
+        app.add_handler(CommandHandler("start", start))
+        app.add_handler(CommandHandler("gas", gas))
+        app.add_handler(CommandHandler("set", set_threshold))
+        app.add_handler(CommandHandler("cancel", cancel))
+        print("🚀 Бот запущен в режиме polling...")
+        await app.run_polling()
 
-    app = ApplicationBuilder().token(TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("gas", gas))
-    app.add_handler(CommandHandler("set", set_threshold))
-    app.add_handler(CommandHandler("cancel", cancel))
-    print("🚀 Бот запущен в режиме polling...")
-    app.run_polling()
+    asyncio.run(main())
