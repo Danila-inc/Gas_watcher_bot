@@ -95,7 +95,10 @@ async def get_gas_price():
         return None
 
 if __name__ == "__main__":
-    async def main():
+    import nest_asyncio
+    nest_asyncio.apply()
+
+    async def start_bot():
         bot = Bot(token=TOKEN)
         await bot.delete_webhook(drop_pending_updates=True)
         print("🔧 Вебхук удалён (если был)")
@@ -108,4 +111,4 @@ if __name__ == "__main__":
         print("🚀 Бот запущен в режиме polling...")
         await app.run_polling()
 
-    asyncio.run(main())
+    asyncio.get_event_loop().run_until_complete(start_bot())
