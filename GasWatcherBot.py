@@ -103,7 +103,7 @@ async def root():
     return JSONResponse({"status": "ok"})
 
 if __name__ == "__main__":
-    app = ApplicationBuilder().token(TOKEN).webhook_url(RENDER_WEBHOOK_URL).build()
+    app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("gas", gas))
     app.add_handler(CommandHandler("set", set_threshold))
