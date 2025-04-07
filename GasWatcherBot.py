@@ -1,8 +1,9 @@
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-import requests
-import asyncio
 import os
+import requests
+from telegram import Update
+from telegram.ext import (
+    ApplicationBuilder, CommandHandler, ContextTypes, JobQueue, Job
+)
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 ETHERSCAN_API_KEY = os.getenv("ETHERSCAN_API_KEY")
@@ -11,73 +12,79 @@ ETHERSCAN_API_KEY = os.getenv("ETHERSCAN_API_KEY")
 thresholds = {}
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Привет! Я слежу за газом в сети Ethereum. Напиши /gas чтобы узнать текущую цену газа 🚦")
+    await update.message.reply_text(
+        "Привет! Напиши /set <число> чтобы установить порог для уведомления о газе ⛽️\n"
+        "Команда /cancel отменяет отслеживание."
+    )
 
 async def gas(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    gas_info = get_gas_info()
-    if gas_info:
-        safe, propose, fast = gas_info
-        message = (
-            f"💨 Текущая цена газа в Gwei:\n"
-            f"• 🟢 Медленно: {safe} Gwei\n"
-            f"• 🟡 Средне: {propose} Gwei\n"
-            f"• 🔴 Быстро: {fast} Gwei"
-        )
-    else:
-        message = "Не удалось получить данные о газе 😓"
-
-    await update.message.reply_text(message)
+    gas_price = await get_gas_price()
+    if gas_price is None:
+        await update.message.reply_text("Не удалось получить данные о газе 😓")
+        return
+    safe, propose, fast = gas_price
+    await update.message.reply_text(
+        f"💨 Текущая цена газа в Gwei:\n"
+        f"• 🟢 Медленно: {safe}\n"
+        f"• 🟡 Средне: {propose}\n"
+        f"• 🔴 Быстро: {fast}"
+    )
 
 async def set_threshold(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
-    try:
-        value = int(context.args[0])
-        thresholds[chat_id] = value
-        print(f"[INFO] Установлен порог {value} Gwei для чата {chat_id}")
-        await update.message.reply_text(f"Буду следить за газом и дам знать, когда опустится до {value} Gwei 🚦")
-    except (IndexError, ValueError):
-        await update.message.reply_text("Пожалуйста, укажи число: /set <число>")
+    if len(context.args) != 1 or not context.args[0].isdigit():
+        await update.message.reply_text("Укажи целое число, например: /set 5")
+        return
+    threshold = int(context.args[0])
+    thresholds[chat_id] = threshold
+    await update.message.reply_text(f"Буду слать пуш, когда газ станет ≤ {threshold} Gwei")
 
-async def cancel_threshold(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    job_queue: JobQueue = context.job_queue
+    job_name = f"monitor_{chat_id}"
+
+    # Сначала удалим старую задачу, если есть
+    old_job = job_queue.get_jobs_by_name(job_name)
+    for job in old_job:
+        job.schedule_removal()
+
+    # Запускаем новую задачу
+    job_queue.run_repeating(callback=check_gas_and_notify, interval=60, first=0, name=job_name, data=chat_id)
+
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
+    job_name = f"monitor_{chat_id}"
+    jobs = context.job_queue.get_jobs_by_name(job_name)
+    for job in jobs:
+        job.schedule_removal()
     if chat_id in thresholds:
         del thresholds[chat_id]
-        print(f"[INFO] Отменено отслеживание для чата {chat_id}")
-        await update.message.reply_text("Окей, больше не слежу за газом ❌")
-    else:
-        await update.message.reply_text("Ты ещё не устанавливал порог для отслеживания")
+    await update.message.reply_text("Окей, отменил отслеживание газа!")
 
-def get_gas_info():
+async def check_gas_and_notify(context: ContextTypes.DEFAULT_TYPE):
+    chat_id = context.job.data
+    if chat_id not in thresholds:
+        return
+    threshold = thresholds[chat_id]
+    gas_price = await get_gas_price()
+    if gas_price is None:
+        return
+    safe, _, _ = gas_price
+    if int(safe) <= threshold:
+        await context.bot.send_message(chat_id, f"🚨 Газ сейчас {safe} Gwei, что ≤ порога {threshold}!")
+
+async def get_gas_price():
     try:
         url = f"https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey={ETHERSCAN_API_KEY}"
         response = requests.get(url).json()
-        result = response["result"]
-        return int(result["SafeGasPrice"]), int(result["ProposeGasPrice"]), int(result["FastGasPrice"])
-    except Exception as e:
-        print(f"[ERROR] Не удалось получить цену газа: {e}")
+        result = response['result']
+        return int(result['SafeGasPrice']), int(result['ProposeGasPrice']), int(result['FastGasPrice'])
+    except:
         return None
-
-async def monitor_gas(app):
-    while True:
-        gas_info = get_gas_info()
-        if gas_info:
-            _, propose, _ = gas_info
-            for chat_id, threshold in list(thresholds.items()):
-                if propose <= threshold:
-                    print(f"[INFO] Gwei ({propose}) <= порог ({threshold}) — отправка уведомления в чат {chat_id}")
-                    await app.bot.send_message(chat_id=chat_id, text=f"🚨 Цена газа достигла {propose} Gwei! Это ниже заданного порога {threshold} Gwei.")
-                    del thresholds[chat_id]
-        await asyncio.sleep(60)  # Проверка каждую минуту
 
 if __name__ == "__main__":
     app = ApplicationBuilder().token(TOKEN).build()
-
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("gas", gas))
     app.add_handler(CommandHandler("set", set_threshold))
-    app.add_handler(CommandHandler("cancel", cancel_threshold))
-
-    app.job_queue.run_once(lambda *_: asyncio.create_task(monitor_gas(app)), 0)
-
-    print("[INFO] Бот запущен")
+    app.add_handler(CommandHandler("cancel", cancel))
     app.run_polling()
