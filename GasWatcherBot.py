@@ -74,16 +74,24 @@ async def check_gas_and_notify(context: ContextTypes.DEFAULT_TYPE):
 
 async def get_gas_price():
     try:
+        if not ETHERSCAN_API_KEY:
+            print("❌ Ошибка: переменная ETHERSCAN_API_KEY не установлена!")
+            return None
+
         url = f"https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey={ETHERSCAN_API_KEY}"
         response = requests.get(url)
-        print("Etherscan response:", response.text)  # Временный отладочный вывод
+        print(f"🌐 Ответ от Etherscan: {response.status_code}, {response.text}")
         data = response.json()
+
+        if data.get("status") != "1":
+            print(f"❌ Некорректный ответ от Etherscan: {data}")
+            return None
+
         result = data['result']
         return int(result['SafeGasPrice']), int(result['ProposeGasPrice']), int(result['FastGasPrice'])
     except Exception as e:
-        print("Ошибка при получении газа:", e)
+        print(f"❌ Ошибка при получении цены газа: {e}")
         return None
-
 
 if __name__ == "__main__":
     app = ApplicationBuilder().token(TOKEN).build()
@@ -91,14 +99,8 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("gas", gas))
     app.add_handler(CommandHandler("set", set_threshold))
     app.add_handler(CommandHandler("cancel", cancel))
-
-    # Убедимся, что переменная без пробелов и с https
-    external_url = os.environ.get("RENDER_EXTERNAL_URL", "").strip()
-
     app.run_webhook(
         listen="0.0.0.0",
         port=int(os.environ.get("PORT", 8443)),
-        webhook_url=f"{external_url}/{TOKEN}",
-        url_path=TOKEN,
+        webhook_url=f"https://{os.environ.get('RENDER_EXTERNAL_URL')}/{TOKEN}"
     )
-
