@@ -75,11 +75,15 @@ async def check_gas_and_notify(context: ContextTypes.DEFAULT_TYPE):
 async def get_gas_price():
     try:
         url = f"https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey={ETHERSCAN_API_KEY}"
-        response = requests.get(url).json()
-        result = response['result']
+        response = requests.get(url)
+        print("Etherscan response:", response.text)  # Временный отладочный вывод
+        data = response.json()
+        result = data['result']
         return int(result['SafeGasPrice']), int(result['ProposeGasPrice']), int(result['FastGasPrice'])
-    except:
+    except Exception as e:
+        print("Ошибка при получении газа:", e)
         return None
+
 
 if __name__ == "__main__":
     app = ApplicationBuilder().token(TOKEN).build()
