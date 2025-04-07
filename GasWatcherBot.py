@@ -4,7 +4,7 @@ import requests
 import os
 
 
-TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 ETHERSCAN_API_KEY = os.getenv("ETHERSCAN_API_KEY")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
