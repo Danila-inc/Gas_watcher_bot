@@ -87,9 +87,14 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("gas", gas))
     app.add_handler(CommandHandler("set", set_threshold))
     app.add_handler(CommandHandler("cancel", cancel))
+
+    # Убедимся, что переменная без пробелов и с https
+    external_url = os.environ.get("RENDER_EXTERNAL_URL", "").strip()
+
     app.run_webhook(
-    listen="0.0.0.0",
-    port=int(os.environ.get("PORT", 8443)),
-    webhook_url=f"https://{os.environ.get('RENDER_EXTERNAL_URL')}/{TOKEN}"
-)
+        listen="0.0.0.0",
+        port=int(os.environ.get("PORT", 8443)),
+        webhook_url=f"{external_url}/{TOKEN}",
+        url_path=TOKEN,
+    )
 
