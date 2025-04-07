@@ -7,7 +7,6 @@ from telegram.ext import (
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 ETHERSCAN_API_KEY = os.getenv("ETHERSCAN_API_KEY")
-RENDER_WEBHOOK_URL = os.getenv("RENDER_WEBHOOK_URL")  # Теперь здесь хардкодим руками
 
 # Словарь для хранения порогов по chat_id
 thresholds = {}
@@ -100,8 +99,5 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("gas", gas))
     app.add_handler(CommandHandler("set", set_threshold))
     app.add_handler(CommandHandler("cancel", cancel))
-    app.run_webhook(
-        listen="0.0.0.0",
-        port=int(os.environ.get("PORT", 8443)),
-        webhook_url=RENDER_WEBHOOK_URL
-    )
+    print("🚀 Бот запущен в режиме polling...")
+    app.run_polling()
