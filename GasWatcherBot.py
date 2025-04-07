@@ -27,7 +27,8 @@ user_thresholds = {}
 
 # --- Health Check для Render ---
 async def health_check(request):
-    return web.Response(text="Gas Bot is OK")
+    # Возвращаем минимальный ответ
+    return web.Response(text="OK", status=200)
 
 def run_health_check():
     app = web.Application()
