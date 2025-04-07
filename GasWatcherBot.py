@@ -4,6 +4,8 @@ from telegram import Update
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, ContextTypes, JobQueue, Job
 )
+from fastapi import FastAPI
+from starlette.responses import JSONResponse
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 ETHERSCAN_API_KEY = os.getenv("ETHERSCAN_API_KEY")
@@ -94,8 +96,14 @@ async def get_gas_price():
         print(f"❌ Ошибка при получении цены газа: {e}")
         return None
 
+fastapi_app = FastAPI()
+
+@fastapi_app.get("/")
+async def root():
+    return JSONResponse({"status": "ok"})
+
 if __name__ == "__main__":
-    app = ApplicationBuilder().token(TOKEN).build()
+    app = ApplicationBuilder().token(TOKEN).webhook_url(RENDER_WEBHOOK_URL).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("gas", gas))
     app.add_handler(CommandHandler("set", set_threshold))
@@ -103,5 +111,6 @@ if __name__ == "__main__":
     app.run_webhook(
         listen="0.0.0.0",
         port=int(os.environ.get("PORT", 8443)),
-        webhook_url=RENDER_WEBHOOK_URL
+        webhook_url=RENDER_WEBHOOK_URL,
+        web_app=fastapi_app
     )
