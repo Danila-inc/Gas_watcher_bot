@@ -3,11 +3,9 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import requests
 import os
 
-# Вставь свой токен сюда
-BOT_TOKEN = "7812855786:AAFx5Vc4qELbUJcBHBVkjy1tcaeB_gvSk2s"
 
-# Etherscan API (можно позже зарегистрировать ключ)
-ETHERSCAN_API_KEY = "DBURNPNEDHGJNZUCMUARRHIWZSA7656U3R"  # общедоступный тестовый
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+ETHERSCAN_API_KEY = os.getenv("ETHERSCAN_API_KEY")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Привет! Я слежу за газом в сети Ethereum. Напиши /gas чтобы узнать текущую цену газа 🚦")
