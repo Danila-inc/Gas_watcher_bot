@@ -112,5 +112,5 @@ if __name__ == "__main__":
         listen="0.0.0.0",
         port=int(os.environ.get("PORT", 8443)),
         webhook_url=RENDER_WEBHOOK_URL,
-        web_app=fastapi_app
+        dispatcher=fastapi_app
     )
